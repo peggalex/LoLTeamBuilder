@@ -646,3 +646,4 @@ if __name__ == "__main__":
     timeSecs = round((finish-start),2)
     minutes = "{} minutes and ".format(int(timeSecs//60)) if timeSecs>60 else ''
     print("Time elapsed: {}{} seconds".format(minutes, round(timeSecs%60)))
+    input("Press enter to exit.")
