@@ -231,7 +231,7 @@ class Team:
         lhs = (maxMeanDiff-math.fabs(selfAvgRank-avgRank))/maxMeanDiff
         rhs = Team.getAvgBenefit(self.members)
         #return lhs*rhs*ohs
-        return lhs*rhs
+        return lhs*(rhs**0.25)
 
     def __repr__(self):
         return "{} {}".format(self.name, self.members)
@@ -246,7 +246,7 @@ def getAvgUtility(teams, avgRank):
 def genRandomPlayers(numPlayers):
     players = [] #this will have a length of numplayers
     # but we cannot specify array lengths at construction in python
-'''
+    '''
     for i in range(numPlayers):
         roles = list(Lanes)
         randomRole = lambda : roles.pop(random.randint(0,len(roles)-1))
@@ -260,7 +260,7 @@ def genRandomPlayers(numPlayers):
             #if not challenger or master, add subdivision
             rank+=str(random.randint(1,5))
         '''
-'''
+    '''
         rankIndex = random.randint(1,100*100)/100
         #100*100 = 00.00, 00.01, 00.02... etc *100
         # ie 2 decimal point nums
@@ -270,7 +270,7 @@ def genRandomPlayers(numPlayers):
                 rank = rankDist[tupRange]
                 break
         '''
-'''
+    '''
         name = "Player {}".format(i+1)
         players.append(Player(name,rank,role1,role2))
     return players
@@ -295,9 +295,7 @@ def genRandomPlayers(numPlayers):
 
     duo1Pref2Index = headers.index("Second Player's Primary Role?")
     duo2Pref2Index = headers.index("Second Player's Secondary Role")
-
-    playerStats = {}
-
+    
     playerValues = [x.split(',') for x in lines[1:]]
 
     i=0
@@ -330,18 +328,15 @@ def genRandomPlayers(numPlayers):
             playerStats[i] = playerStat2
             i+=1
 
-    for player in playerStats:
-        name = "Player:{}".format(player)
-        players.append(Player(name, playerStat['Rank'],playerStat['First pref'],playerStat['Second pref'])
-            
-assert(len(headers)==len(playerValues[0]))
-length = len(headers)
+    for i in range(len(playerStats)):
+        name = "Player:{}".format(i)
+        rank = playerStats[i]['Rank']
+        pref1 = playerStats[i]['First pref'].strip().lower()
+        pref2 = playerStats[i]['Second pref'].strip().lower()
+        players.append(Player(name, rank,pref1,pref2))
 
-for k in playerStats.keys():
-    print("player {}: {}".format(k+1,playerStats[k]))
-
-print("total players: {}".format(i))
-
+    #print("total players: {}".format(i))
+    return players
 
 def raiseUtility(team1, team2, avgRank, key: int)->bool:
     ar = avgRank
@@ -515,8 +510,8 @@ def teamStr(teams,avgRank):
             teamAvgRank = team.getAvgRank()
             rank = Rank.rankIntToStr(teamAvgRank)
             #s+="Team utility: {}\n".format(round(team.getUtility(avgRank),4))
-            s+="Average rank: {}\n".format(rank)
-            sd = round(team.getVariance(avgRank)**0.5,5)
+            s+="Average rank: {} ({})\n".format(rank, round(teamAvgRank,2))
+            sd = round(team.getVariance(avgRank)**0.5,2)
             s+="Standard deviation of rank: {}\n{}\n".format(sd,"-"*60)
             members = team.getMembers()
             for role in members.keys():
@@ -543,7 +538,7 @@ def teamStatStr(teams)->str:
     s = prefStr('first',totalFirstPref) + "\n"
     s += prefStr('first or second',totalSecondPref+totalFirstPref)+'\n'
     
-    sd = round(getSDOfTeamRank(teamAvgs,avgRank),5)
+    sd = round(getSDOfTeamRank(teamAvgs,avgRank),2)
     s=''.join((s,("Standard deviation of team ranks: {}\n".format(sd))))
     
     utility = round(getAvgUtility(teams,getAvgRank(teams)),5)
@@ -640,9 +635,11 @@ if __name__ == "__main__":
     team1StatStr = teamStatStr(teams)
     changed=True
     state = 0
+    '''
     print(team1Str)
     print(team1StatStr)
-    input('\nPress enter to continue...')
+    '''
+    input('\nPress enter to continue... (takes less than 20 secs)')
     print("Avg utility (state=0):")
     start = time.time()
     utility = getAvgUtility(teams,avgRank)
@@ -705,15 +702,21 @@ if __name__ == "__main__":
     finish = time.time()
     team2Str = teamStr(teams,avgRank)
     team2StatStr = teamStatStr(teams)
+    '''
     print("\nOld layout:\n")
     print(team1Str)
     print(team1StatStr+"\n")
     print("="*60)
+    '''
     print("\nNew layout:\n")
     print(team2Str)
     print(team2StatStr)
-    print("\nOverall average rank: {}".format(Rank.rankIntToStr(avgRank)))
+    print("\nOverall average rank: {} ({})".format(Rank.rankIntToStr(avgRank),round(avgRank,2)))
     timeSecs = round((finish-start),2)
     minutes = "{} minutes and ".format(int(timeSecs//60)) if timeSecs>60 else ''
+    minRankNum = min(teams, key = lambda team: team.getAvgRank()).getAvgRank()
+    maxRankNum = max(teams, key = lambda team: team.getAvgRank()).getAvgRank()
+    print("Minimum team average rank: {} ({})".format(Rank.rankIntToStr(minRankNum),round(minRankNum,2)))
+    print("Maximum team average rank: {} ({})\n".format(Rank.rankIntToStr(maxRankNum),round(maxRankNum,2)))
     print("Time elapsed: {}{} seconds".format(minutes, round(timeSecs%60)))
     input("Press enter to exit.")
