@@ -716,7 +716,7 @@ if __name__ == "__main__":
     minutes = "{} minutes and ".format(int(timeSecs//60)) if timeSecs>60 else ''
     minRankNum = min(teams, key = lambda team: team.getAvgRank()).getAvgRank()
     maxRankNum = max(teams, key = lambda team: team.getAvgRank()).getAvgRank()
-    print("Minimum team average rank: {} ({})".format(Rank.rankIntToStr(minRankNum),round(minRankNum,2)))
-    print("Maximum team average rank: {} ({})\n".format(Rank.rankIntToStr(maxRankNum),round(maxRankNum,2)))
+    print("Minimum team rank: {} ({})".format(Rank.rankIntToStr(minRankNum),round(minRankNum,2)))
+    print("Maximum team rank: {} ({})\n".format(Rank.rankIntToStr(maxRankNum),round(maxRankNum,2)))
     print("Time elapsed: {}{} seconds".format(minutes, round(timeSecs%60)))
     input("Press enter to exit.")
