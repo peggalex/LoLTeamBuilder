@@ -25,6 +25,7 @@ playerValues = [x.split(',') for x in lines[1:]]
 
 i=0
 playerStats = {}
+
 for player in playerValues:
     playerStat = {'Rank':None,'First pref':None, 'Second pref':None}
     if player[soloDuoIndex]=="Solo":
@@ -55,10 +56,8 @@ for player in playerValues:
         
 assert(len(headers)==len(playerValues[0]))
 length = len(headers)
-'''
-playerStats = {}
-for i in range(len(playerValues)):
-    playerStats[i] = {headers[j]:playerValues[i][j] for j in range(length)}
-'''
+
 for k in playerStats.keys():
-    print(playerStats[k])
+    print("player {}: {}".format(k+1,playerStats[k]))
+
+print("total players: {}".format(i))
