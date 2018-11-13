@@ -19,12 +19,10 @@ duo2Pref1Index = headers.index("First Player's Secondary Role?")
 duo1Pref2Index = headers.index("Second Player's Primary Role?")
 duo2Pref2Index = headers.index("Second Player's Secondary Role")
 
-playerStats = {}
-
 playerValues = [x.split(',') for x in lines[1:]]
 
 i=0
-playerStats = {}
+playerStats = {} # {0:{'Rank':'dia5','1st Pref':'top','2nd Pref':'sup'},1:{'Rank'...}...}
 
 for player in playerValues:
     playerStat = {'Rank':None,'First pref':None, 'Second pref':None}
@@ -53,11 +51,5 @@ for player in playerValues:
         playerStats[i] = playerStat2
         i+=1
         
-        
-assert(len(headers)==len(playerValues[0]))
-length = len(headers)
-
-for k in playerStats.keys():
-    print("player {}: {}".format(k+1,playerStats[k]))
 
 print("total players: {}".format(i))
