@@ -231,6 +231,10 @@ class Team:
         lhs = (maxMeanDiff-math.fabs(selfAvgRank-avgRank))/maxMeanDiff
         rhs = Team.getAvgBenefit(self.members)
         #return lhs*rhs*ohs
+        
+        #make rhs to the power of 1/4 to diminish it's effects.
+        #If we do lhs*(0.5*rhs), it will be the equivalent of 0.5*(lhs*rhs)
+        #The only way to diminish rhs is to raise the power on rhs specifically
         return lhs*(rhs**0.25)
 
     def __repr__(self):
@@ -259,18 +263,6 @@ def genRandomPlayers(numPlayers):
         if rankIndex<5:
             #if not challenger or master, add subdivision
             rank+=str(random.randint(1,5))
-        '''
-    '''
-        rankIndex = random.randint(1,100*100)/100
-        #100*100 = 00.00, 00.01, 00.02... etc *100
-        # ie 2 decimal point nums
-        rankDist = getRankDist()
-        for tupRange in rankDist.keys():
-            if tupRange[0]<=rankIndex<=tupRange[1]:
-                rank = rankDist[tupRange]
-                break
-        '''
-    '''
         name = "Player {}".format(i+1)
         players.append(Player(name,rank,role1,role2))
     return players
