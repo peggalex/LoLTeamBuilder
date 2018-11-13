@@ -233,8 +233,6 @@ class Team:
         #return lhs*rhs*ohs
         
         #make rhs to the power of 1/4 to diminish it's effects.
-        #If we do lhs*(0.5*rhs), it will be the equivalent of 0.5*(lhs*rhs)
-        #The only way to diminish rhs is to raise the power on rhs specifically
         return lhs*(rhs**0.25)
 
     def __repr__(self):
