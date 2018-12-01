@@ -77,7 +77,8 @@ class Rank:
         return s
 
 class Player:
-
+    _playerSerial = 1
+    
     def __init__(self, name: str, rank: str, prefRole1: str, prefRole2: str):
         assert(prefRole1 in Lanes and prefRole2 in Lanes)
         self.name = name
@@ -85,6 +86,7 @@ class Player:
         self.prefRole1 = prefRole1
         self.prefRole2 = prefRole2
         self.team = None
+        self.duoName = None
 
     def setTeam(self, team):
         self.team = team
@@ -107,8 +109,37 @@ class Player:
     def __repr__(self):
         return self.name
 
-class Team:
+    #public
+    def getSerial():
+        Player._playerSerial+=1
+        return Player._playerSerial-1
 
+class DuoPlayer(Player):
+
+    def __init__(self, name: str, rank: str, prefRole1: str, prefRole2: str):
+        super().__init__(name,rank,prefRole1,prefRole2)
+        self.duo = None
+        self._duoName = None
+
+    def setDuo(self, duo):
+        self.duo = duo
+
+    def getDuo(self):
+        return self.duo
+
+    def getDuoName(self):
+        return self._duoName
+        
+    #Global
+    def bindDuo(duo1,duo2,name: str):
+        duo1.setDuo(duo2)
+        duo2.setDuo(duo1)
+        for duo in (duo1,duo2):
+            duo._duoName = name
+
+class Team:
+    _teamSerial = 1
+    
     def __init__(self, name = str):
         self.name = name
         self.members = {Lanes[i]:None for i in range(5)}
@@ -218,25 +249,29 @@ class Team:
         selfAvgRank = self.getAvgRank()
         #maxSelfMeanDiff = max(av,upperBoundAR-selfAvgRank)
         #maxSelfSD = ((((maxSelfMeanDiff)**2)*5)/5)**0.5
-
+        '''
         maxSD = ((((maxMeanDiff)**2)*5)/5)**0.5
         standardDev = self.getVariance(avgRank)**0.5
         
-        #ohs = (maxSelfSD - standardDev)/maxSelfSD
         ohs = (maxSD - standardDev)/maxSD
+        '''
         # as variance approaches 0, lhs approaches 1
         # as variance approaches maxVariance, lhs approaches 0
         # ^this option saw far worse rank variation between teams
 
         lhs = (maxMeanDiff-math.fabs(selfAvgRank-avgRank))/maxMeanDiff
         rhs = Team.getAvgBenefit(self.members)
-        #return lhs*rhs*ohs
+        #return (rhs**0.25)*ohs
         
         #make rhs to the power of 1/4 to diminish it's effects.
-        return lhs*(rhs**0.25)
+        return lhs*(rhs**0.1)
 
     def __repr__(self):
         return "{} {}".format(self.name, self.members)
+
+    def getSerial():
+        Team._teamSerial+=1
+        return Team._teamSerial-1
 
 
 def getAvgRank(teams: list):
@@ -245,9 +280,8 @@ def getAvgRank(teams: list):
 def getAvgUtility(teams, avgRank):
     return sum(t.getUtility(avgRank) for t in teams)/len(teams)
 
-def genRandomPlayers(numPlayers):
-    players = [] #this will have a length of numplayers
-    # but we cannot specify array lengths at construction in python
+def genRandomPlayers():
+    players = []
     '''
     for i in range(numPlayers):
         roles = list(Lanes)
@@ -289,7 +323,9 @@ def genRandomPlayers(numPlayers):
     playerValues = [x.split(',') for x in lines[1:]]
 
     i=0
+    j=0
     playerStats = {}
+    playerStatsDuo = {}
 
     for player in playerValues:
         playerStat = {'Rank':None,'First pref':None, 'Second pref':None}
@@ -313,20 +349,74 @@ def genRandomPlayers(numPlayers):
             playerStat['Second pref'] = player[duo1Pref2Index]
             playerStat2['Second pref'] = player[duo2Pref2Index]
             
-            playerStats[i] = playerStat
-            i+=1
-            playerStats[i] = playerStat2
-            i+=1
-
+            playerStatsDuo[j] = {'duo0':playerStat,'duo1':playerStat2}
+            j+=1
+            
     for i in range(len(playerStats)):
-        name = "Player:{}".format(i)
+        name = "Player:{}".format(Player.getSerial())
         rank = playerStats[i]['Rank']
         pref1 = playerStats[i]['First pref'].strip().lower()
         pref2 = playerStats[i]['Second pref'].strip().lower()
         players.append(Player(name, rank,pref1,pref2))
+        
+    for j in range(len(playerStatsDuo)):
+        playerStatDuo = playerStatsDuo[j]
+        duos = [None,None]
+        for k in (0,1):
+            name = "Player:{}".format(Player.getSerial())
+            key = 'duo{}'.format(k)
+            rank = playerStatDuo[key]['Rank']
+            pref1 = playerStatDuo[key]['First pref'].strip().lower()
+            pref2 = playerStatDuo[key]['Second pref'].strip().lower()
+            #duos[k] = DuoPlayer(name,rank,pref1,pref2)
+            duos[k] = Player(name,rank,pref1,pref2)
+        #duoName = 'Duo {}'.format(j+1)
+        #DuoPlayer.bindDuo(duos[0],duos[1],duoName)
+        #for duo in duos:
+            #players.append(duo)
+        
 
     #print("total players: {}".format(i))
     return players
+
+def genTeams(players):
+    numPlayers = len(players)
+    teams = [Team("Team {}".format(Team.getSerial())) for _ in range(numPlayers//5)]        
+    duos = []
+    solos = []
+    for player in players:
+        if type(player)==DuoPlayer:
+            duos.append(player)
+        else:
+            assert(type(player)==Player)
+            solos.append(player)
+
+    while (len(duos)>1):
+        teamsCopy = teams.copy()
+        while (len(teamsCopy)>1 and len(duos)>1):
+            team = teamsCopy.pop()
+            if sum(x is not None for x in team.getMembers().values())<4:
+                duo1 = duos.pop()
+                duo2 = duos.pop()
+                team.addPlayer(duo1)
+                team.addPlayer(duo2)
+            else:
+                continue
+    if len(duos)==1:
+        for team in teams:
+            if sum(x is not None for x in team.getMembers().values())<4:
+                team.addPlayer(duos.pop())
+                break
+
+    teamsCopy = teams.copy()
+    while(len(solos)>1):
+        team = teamsCopy.pop()
+        while not team.isFullTeam():
+            team.addPlayer(solos.pop())
+    return teams
+        
+
+    
 
 def raiseUtility(team1, team2, avgRank, key: int)->bool:
     ar = avgRank
@@ -355,10 +445,10 @@ def raiseUtility(team1, team2, avgRank, key: int)->bool:
         t2.addPlayer(t1p2)
 
     absD = lambda x,y: math.fabs(x-y)
-
+    notDuo = lambda x: list(filter(lambda y: type(y)!=DuoPlayer,x))
     if key==1:
-        for p1 in team1.getMembers().values():
-            for p2 in team2.getMembers().values():
+        for p1 in notDuo(team1.getMembers().values()):
+            for p2 in notDuo(team2.getMembers().values()):
                 avgUtilityOld = getAvgUtility([team1,team2],avgRank)
                 _swapPlayers1(p1,p2)
                                       
@@ -381,6 +471,7 @@ def raiseUtility(team1, team2, avgRank, key: int)->bool:
                     # as teams switch and then switch back
                     # players
                     return deltaUtility
+                #print(deltaUtility)
                 team1.revert(t1PreOptimise)
                 team2.revert(t2PreOptimise)
                 _swapPlayers1(p2,p1)
@@ -389,14 +480,35 @@ def raiseUtility(team1, team2, avgRank, key: int)->bool:
         membersT1 = list(team1.getMembers().values())
         membersT2 = list(team2.getMembers().values())
 
+        duoBreak = False
         for t1p1 in membersT1[:-1]:
             for t1p2 in membersT1[membersT1.index(t1p1)+1:]:
+
+                if type(t1p1)==DuoPlayer or type(t1p2)==DuoPlayer:
+                    if type(t1p1)!=type(t1p2):
+                        continue
+                    elif t1p1.getDuo != t1p2:
+                        continue
+                    else:
+                        assert(t1p2.getDuo == t1p1)
+                        duoBreakT1 = True0
+                        
                 # this gives unique combinations of t1p1 and t1p2
                 # the other way to do this would be to copy
                 # the list each iteration of the loop and pop
                 # values, like in the main function
+                
                 for t2p1 in membersT2[:-1]:
                     for t2p2 in membersT2[membersT2.index(t2p1)+1:]:
+                        
+                        if type(t2p1)==DuoPlayer or type(t2p2)==DuoPlayer:
+                            if type(t2p1)!=type(t2p2):
+                                continue
+                            elif t2p1.getDuo != t2p2:
+                                continue
+                            else:
+                                assert(t2p2.getDuo == t2p1)
+                                
                         avgUtilityOld = getAvgUtility([team1,team2],avgRank)
                         
                         _swapPlayers2(t1p1,t1p2,t2p1,t2p2)
@@ -413,85 +525,15 @@ def raiseUtility(team1, team2, avgRank, key: int)->bool:
                         team1.revert(t1PreOptimise)
                         team2.revert(t2PreOptimise)
                         _swapPlayers2(t2p1,t2p2,t1p1,t1p2)
+
+            if duoBreak:
+                duoBreak = False
+                break
+
+                
                         
     #loop hasn't broken by return statement
     return 0
-
-def manual_swap_team(t1,t2,avgRank):
-    ar = avgRank
-    
-    def _swapPlayers1(p1,p2):
-        t1,t2 = p1.getTeam(), p2.getTeam()
-        t1.removePlayer(p1)
-        t2.removePlayer(p2)
-        t1.addPlayer(p2)
-        t2.addPlayer(p1)
-
-    absD = lambda x,y: math.fabs(x-y)
-    avgUtilDist = lambda t1,t2: sum(absD(t.getUtility(ar),avgU) for t in (t1,t2))/2
-    for p1 in team1.getMembers().values():
-        for p2 in team2.getMembers().values():
-            avgUtilityOld = getAvgUtility([team1,team2],avgRank)
-            _swapPlayers1(p1,p2)
-
-            avgDistOld = avgUtilDist(team1,team2)
-                                  
-            t1PreOptimise = team1.getMembers()
-            t2PreOptimise = team2.getMembers()
-            team1.optimiseUtility()
-            team2.optimiseUtility()
-
-            avgDistNew = avgUtilDist(team1,team2)
-            print('t1: {}'.format(team1))
-            print('t2: {}'.format(team2))
-            print('t1 util: {}, t2 util: {}'.format(team1.getUtility(ar),team2.getUtility(ar)))
-            avgUtilityNew = getAvgUtility([team1,team2],avgRank)
-            deltaUtility = avgUtilityNew - avgUtilityOld
-            print('delta util: {}'.format(deltaUtility))
-
-            if deltaUtility>0 and avgDistNew >= avgDistOld:
-                return deltaUtility
-            
-            team1.revert(t1PreOptimise)
-            team2.revert(t2PreOptimise)
-            _swapPlayers1(p2,p1)
-
-def manual_swap_player(p1,p2,avgRank):
-    ar = avgRank
-    
-    def _swapPlayers1(p1,p2):
-        t1,t2 = p1.getTeam(), p2.getTeam()
-        t1.removePlayer(p1)
-        t2.removePlayer(p2)
-        t1.addPlayer(p2)
-        t2.addPlayer(p1)
-
-    absD = lambda x,y: math.fabs(x-y)
-    avgUtilDist = lambda t1,t2: sum(absD(t.getUtility(ar),avgU) for t in (t1,t2))/2
-    avgUtilityOld = getAvgUtility([team1,team2],avgRank)
-    _swapPlayers1(p1,p2)
-
-    avgDistOld = avgUtilDist(team1,team2)
-                          
-    t1PreOptimise = team1.getMembers()
-    t2PreOptimise = team2.getMembers()
-    team1.optimiseUtility()
-    team2.optimiseUtility()
-
-    avgDistNew = avgUtilDist(team1,team2)
-    print('t1: {}'.format(team1))
-    print('t2: {}'.format(team2))
-    print('t1 util: {}, t2 util: {}'.format(team1.getUtility(ar),team2.getUtility(ar)))
-    avgUtilityNew = getAvgUtility([team1,team2],avgRank)
-    deltaUtility = avgUtilityNew - avgUtilityOld
-    print('delta util: {}'.format(deltaUtility))
-
-    if deltaUtility>0 and avgDistNew >= avgDistOld:
-        return deltaUtility
-    
-    team1.revert(t1PreOptimise)
-    team2.revert(t2PreOptimise)
-    _swapPlayers1(p2,p1)
 
 def teamStr(teams,avgRank):
     s=""
@@ -508,6 +550,7 @@ def teamStr(teams,avgRank):
                     p = members[role]
                     fs = "actual role: {} | pref1: {}, pref2: {} | rank: {}"
                     s+=fs.format(role, p.getPrefRole1(), p.getPrefRole2(), Rank.rankIntToStr(p.getRank()))+'\n'
+                    s = s[:-1]+" ({})\n".format(p.getDuoName()) if type(p)==DuoPlayer else s
     return s
 
 def teamStatStr(teams)->str:
@@ -594,18 +637,22 @@ def getPopSD(iterable):
     average = sum(iterable)/len(iterable)
     summ = sum((num-average)**2 for num in iterable)
     return (summ/len(iterable))**0.5
-
+        
 
 if __name__ == "__main__":
-    
-    numPlayers = 80
+
+    players = genRandomPlayers()
+    numPlayers = len(players)
     numTeams = int(numPlayers//len(Lanes))
+    numToBePlaced = int((len(players)//5)*5)
     print("Players to be placed {}, {} players will be left over"\
-          .format(numPlayers-(numPlayers%5),numPlayers%5))
-    players = genRandomPlayers(numPlayers)
+      .format(numToBePlaced,numPlayers%5))
+    players = players[:numToBePlaced]
     players2 = players.copy()
+
+    '''
     teams = []
-    teamsChanged = [True for _ in range(numTeams)]
+    #teamsChanged = [True for _ in range(numTeams)]
     # teams changed is a list that says if a team has changed
     # in the last round(loop) of swapping
     # when comparing 2 teams.
@@ -618,6 +665,8 @@ if __name__ == "__main__":
         teams.append(Team("Team {}".format(i+1)))
         for i in range(5):
             teams[-1].addPlayer(players.pop(),Lanes[i])
+    '''
+    teams = genTeams(players)
     avgRank = getAvgRank(teams) #constant
     ar = avgRank
     #print(teams)
@@ -629,7 +678,7 @@ if __name__ == "__main__":
     print(team1Str)
     print(team1StatStr)
     '''
-    input('\nPress enter to continue... (takes less than 20 secs)')
+    input('\nPress enter to continue...')
     print("Avg utility (state=0):")
     start = time.time()
     utility = getAvgUtility(teams,avgRank)
@@ -639,12 +688,9 @@ if __name__ == "__main__":
     teamUtilities = [team.getUtility(avgRank) for team in teams]
     utilityAvg = avgF(teamUtilities)
     utilitySD = getPopSD(teamUtilities)
-    getTeamChanged = lambda t: teamsChanged(teams.index(t))
 
-    avgF = lambda iterable: sum(iterable)/len(iterable)
-    
     while(state!=3):
-        teamsChanged = [True for _ in range(numTeams)]
+        teamsChanged = {i:{j:True for j in range(len(teams))} for i in range(len(teams))}
         teamsCopy = teams.copy()
         changed = False
         #while(len(teamsCopy)>1 and not changed):
@@ -653,7 +699,7 @@ if __name__ == "__main__":
             for team2 in teamsCopy:
                 t1Index = teams.index(team1)
                 t2Index = teams.index(team2)
-                if not(teamsChanged[t1Index] and teamsChanged[t2Index]):
+                if not (teamsChanged[t1Index][t2Index] and teamsChanged[t2Index][t1Index]):
                     # if none of the two have changed in the last loop,
                     # no point in trying to permutate them again
                     
@@ -671,8 +717,8 @@ if __name__ == "__main__":
                 elif state==2:
                     result = raiseUtility(team1, team2, avgRank, 1)
                 changed = changed or result
-                teamsChanged[t1Index] = result
-                teamsChanged[t2Index] = result
+                teamsChanged[t1Index][t2Index] = result
+                teamsChanged[t2Index][t1Index] = result
                 
                 if result:
                     print("\tchange in utility: {}".format(result))
